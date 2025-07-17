@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Numerical Methods Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- KaTeX for beautiful math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEM4DEyMhBGHRfunEZQB9SKaovvcbbVNg98gvQdJZOTGy1KADU" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application uses a master-detail layout. A persistent navigation sidebar (the master view) lists all numerical methods. Clicking a method updates the main content area (the detail view) to display comprehensive information about that specific method. This structure was chosen because it allows users to focus on one method at a time, preventing information overload, while still enabling quick comparison by switching between them. An interactive chart is included for the Newton-Raphson method to provide a deeper, more intuitive understanding of its iterative process, which is more effective than a static formula alone. -->
+    <!-- Visualization & Content Choices: The source table is transformed into a more engaging, interactive format. Report Info (Method properties) -> Goal (Inform/Compare) -> Viz (Styled cards) -> Interaction (None) -> Justification (Cards break down complex info into digestible chunks). Report Info (Newton-Raphson process) -> Goal (Explain Change) -> Viz (Interactive Line Chart) -> Interaction (Hover over points) -> Justification (A chart visually demonstrates the concept of convergence far better than text alone) -> Library (Chart.js). Report Info (Formulas/Steps) -> Goal (Inform) -> Viz (Styled code blocks with KaTeX rendering) -> Justification (Clear, professional presentation for mathematical formulas). -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f4; /* Warm Neutral: Stone 100 */
+            color: #292524; /* Warm Neutral: Stone 800 */
+        }
+        .nav-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-button.active {
+            background-color: #a8a29e; /* Warm Neutral: Stone 400 */
+            color: #1c1917; /* Warm Neutral: Stone 900 */
+            font-weight: 600;
+        }
+        .nav-button:not(.active):hover {
+            background-color: #e7e5e4; /* Warm Neutral: Stone 200 */
+        }
+        .content-card {
+            background-color: #fafaf9; /* Warm Neutral: Stone 50 */
+            border: 1px solid #e7e5e4; /* Warm Neutral: Stone 200 */
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        }
+        .formula-box {
+            background-color: #e7e5e4; /* Warm Neutral: Stone 200 */
+            color: #292524;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            font-size: 1rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .katex-display {
+            padding: 1rem;
+            margin: 0;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 50vh;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-stone-100 p-4 md:p-6 border-b md:border-b-0 md:border-r border-stone-200 flex-shrink-0">
+            <h1 class="text-2xl font-bold text-stone-800 mb-6">Numerical Methods</h1>
+            <nav id="method-nav" class="flex flex-row md:flex-col gap-2">
+                <!-- Navigation buttons will be injected here by JS -->
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+            <div id="content-container">
+                <!-- Content for each method will be injected here -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const methodsData = [
+            {
+                id: 'newton-raphson',
+                name: 'Newton-Raphson Method',
+                type: 'Indirect',
+                convergence: '2 (Quadratic)',
+                formula: `$$x_{n+1} = x_n - \\frac{f(x_n)}{f'(x_n)}$$`,
+                error: 'The error at step n+1 is proportional to the square of the error at step n, leading to very fast convergence near the root.',
+                failsWhen: `The method can fail or diverge if the initial guess is far from the actual root, or if the derivative f'(x_n) is zero or very close to zero at any iteration.`,
+                sampleProblems: [
+                    `Find a root for the equation: $$f(x) = x^3 - x - 1 = 0$$`,
+                    `Find the positive root of $$f(x) = \\cos(x) - x e^x = 0$$`,
+                    `Calculate the square root of 10 by solving $$x^2 - 10 = 0$$`,
+                    `Solve for x in: $$3x = \\cos(x) + 1$$`,
+                    `Find a root for the polynomial: $$f(x) = x^4 + x - 10 = 0$$`
+                ],
+                interactive: true
+            },
+            {
+                id: 'gauss-elimination',
+                name: 'Gauss Elimination',
+                type: 'Direct',
+                convergence: 'N/A (Direct Method)',
+                formula: `1. Forward Elimination: Convert the augmented matrix [A|b] into an upper triangular form [U|c].\n2. Back Substitution: Solve the system of equations from the bottom up using the upper triangular matrix.`,
+                error: 'Round-off errors can accumulate during the forward elimination steps, which can be significant for ill-conditioned systems (where small changes in coefficients lead to large changes in the solution).',
+                failsWhen: 'The method fails if a pivot element (the diagonal element used for elimination) is zero at any stage, as this would require division by zero. This can be mitigated by using pivoting strategies (e.g., partial or full pivoting).',
+                sampleProblems: [
+                    'Solve:\n2x + y - z = 8\n-3x - y + 2z = -11\n-2x + y + 2z = -3',
+                    'Solve the system:\nx + 2y + 3z = 6\n2x - 3y + 2z = 14\n3x + y - z = -2',
+                    'Find the solution for:\nx - y + 2z = 5\n3x + 2y + z = 10\n2x - 3y - 2z = -10',
+                    'Solve the 4x4 system:\nw + x + y + z = 2\n2w + 3x - y = 1\n-w + 2x + 3y + z = 6\nw - x + 2y - z = -1',
+                    'Determine the currents I1, I2, I3 in a circuit:\n7*I1 - 3*I2 - 2*I3 = 10\n-3*I1 + 8*I2 - I3 = 5\n-2*I1 - I2 + 6*I3 = 2'
+                ]
+            },
+            {
+                id: 'gauss-jordan',
+                name: 'Gauss-Jordan Method',
+                type: 'Direct',
+                convergence: 'N/A (Direct Method)',
+                formula: `1. Forward & Backward Elimination: Convert the augmented matrix [A|b] into a diagonal matrix (specifically, the identity matrix) [I|x].\n2. The solution vector x is then directly read from the augmented part of the final matrix.`,
+                error: 'Similar to Gauss Elimination, it is susceptible to round-off errors. It generally requires more arithmetic operations (about 50% more) than Gauss Elimination, making it less efficient for manual calculation.',
+                failsWhen: 'Like Gauss Elimination, the method fails if it encounters a zero pivot element. Pivoting strategies are also applicable here to improve numerical stability.',
+                sampleProblems: [
+                    'Solve:\nx + y + z = 9\n2x - 3y + 4z = 13\n3x + 4y + 5z = 40',
+                    'Find the inverse of the matrix:\nA = [[1, 2, 3], [2, 5, 3], [1, 0, 8]]',
+                    'Solve the system:\n2x + 4y - 2z = 4\nx + 3y + 3z = 10\n-x + 2y + 7z = 17',
+                    'Find the solution for:\n5x - 2y + 3z = -1\n-3x + 9y + z = 2\n2x - y - 7z = 3',
+                    'Solve the system:\nx + 2y = 8\n3x - 4y = 4'
+                ]
+            },
+            {
+                id: 'gauss-seidel',
+                name: 'Gauss-Seidel Method',
+                type: 'Indirect',
+                convergence: '1 (Linear)',
+                formula: `$$x_i^{(k+1)} = \\frac{1}{a_{ii}} \\left( b_i - \\sum_{j=1}^{i-1} a_{ij}x_j^{(k+1)} - \\sum_{j=i+1}^{n} a_{ij}x_j^{(k)} \\right)$$`,
+                error: 'The error typically decreases at a linear rate with each iteration. The speed of convergence depends on the properties of the matrix A.',
+                failsWhen: 'Convergence is not guaranteed for all systems. A sufficient (but not necessary) condition for convergence is that the matrix A is strictly diagonally dominant. If this condition is not met, the method may diverge.',
+                sampleProblems: [
+                    'Solve iteratively (4 iterations):\n10x₁ - x₂ + 2x₃ = 6\n-x₁ + 11x₂ - x₃ + 3x₄ = 25\n2x₁ - x₂ + 10x₃ - x₄ = -11\n3x₂ - x₃ + 8x₄ = 15',
+                    'Solve the diagonally dominant system:\n4x + y + z = 7\nx + 5y + 2z = 8\nx + 2y + 6z = 9',
+                    'Apply Gauss-Seidel to solve:\n20x + y - 2z = 17\n3x + 20y - z = -18\n2x - 3y + 20z = 25',
+                    'Find the solution using an initial guess of (0,0,0):\n8x - 3y + 2z = 20\n4x + 11y - z = 33\n6x + 3y + 12z = 35',
+                    'Iterate to find the solution for:\n5x₁ - x₂ + 2x₃ = 12\n3x₁ + 8x₂ - 2x₃ = -25\nx₁ + x₂ + 4x₃ = 6'
+                ]
+            },
+            {
+                id: 'power-method',
+                name: 'Power Method',
+                type: 'Indirect',
+                convergence: '1 (Linear)',
+                formula: `1. Start with an initial non-zero vector $$x_0$$.\n2. Iterate: $$x_{k+1} = A x_k$$\n3. Normalize the resulting vector.\n4. The Rayleigh quotient converges to the dominant eigenvalue: $$\\lambda \\approx \\frac{x_k^T A x_k}{x_k^T x_k}$$`,
+                error: 'The rate of convergence depends on the ratio of the magnitudes of the dominant eigenvalue (λ₁) to the next-largest eigenvalue (λ₂). If |λ₂| / |λ₁| is close to 1, convergence will be very slow.',
+                failsWhen: 'The method fails to converge if the matrix does not have a single, strictly dominant eigenvalue (i.e., an eigenvalue with a magnitude strictly greater than all others). It also may not work correctly if the initial vector has no component in the direction of the dominant eigenvector.',
+                sampleProblems: [
+                    'Find the dominant eigenvalue for:\nA = [[2, -1, 0], [-1, 2, -1], [0, -1, 2]]',
+                    'Determine the largest eigenvalue and corresponding eigenvector for:\nA = [[1, 2], [3, 4]]',
+                    'Apply the Power Method to the matrix:\nA = [[2, -12], [1, -5]]',
+                    'Find the dominant eigenvalue of:\nA = [[5, 4, 2], [4, 5, 2], [2, 2, 2]]',
+                    'Use the Power Method to find the largest eigenvalue of:\nA = [[-4, 14], [-2, 9]]'
+                ]
+            }
+        ];
+
+        const navContainer = document.getElementById('method-nav');
+        const contentContainer = document.getElementById('content-container');
+        let activeChart = null;
+
+        function displayMethod(methodId) {
+            const method = methodsData.find(m => m.id === methodId);
+            if (!method) return;
+
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.id === methodId);
+            });
+            
+            contentContainer.innerHTML = '';
+            if (activeChart) {
+                activeChart.destroy();
+                activeChart = null;
+            }
+
+            const contentEl = document.createElement('div');
+            contentEl.className = 'flex flex-col gap-6';
+            
+            let interactiveSection = '';
+            if (method.interactive) {
+                interactiveSection = `
+                    <div class="content-card">
+                        <h2 class="text-xl font-semibold text-stone-700 mb-4">Interactive Visualization</h2>
+                        <p class="text-stone-600 mb-4">
+                            This chart visualizes the convergence for the sample problem $$f(x) = x^3 - 2x - 5$$. Starting with an initial guess, each subsequent point is the x-intercept of the tangent line from the previous point, quickly homing in on the root where f(x) = 0.
+                        </p>
+                        <div class="chart-container">
+                            <canvas id="newtonChart"></canvas>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const sampleProblemsHTML = method.sampleProblems.map((problem, index) => `
+                <div class="formula-box text-base">
+                    <p class="font-semibold mb-2 text-stone-600">Problem ${index + 1}:</p>
+                    <p>${problem}</p>
+                </div>
+            `).join('');
+
+            contentEl.innerHTML = `
+                <div class="flex flex-col gap-2">
+                    <h1 class="text-4xl font-bold text-stone-900">${method.name}</h1>
+                    <p class="text-lg text-stone-600">An essential numerical technique for solving complex problems.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="content-card">
+                        <h3 class="text-lg font-semibold text-stone-700 mb-2">Method Type</h3>
+                        <p class="text-2xl font-bold text-sky-600">${method.type}</p>
+                    </div>
+                    <div class="content-card">
+                        <h3 class="text-lg font-semibold text-stone-700 mb-2">Order of Convergence</h3>
+                        <p class="text-2xl font-bold text-sky-600">${method.convergence}</p>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h2 class="text-xl font-semibold text-stone-700 mb-4">Formula / Key Steps</h2>
+                    <div class="formula-box text-lg">${method.formula}</div>
+                </div>
+
+                ${interactiveSection}
+                
+                <div class="content-card">
+                    <h2 class="text-xl font-semibold text-stone-700 mb-4">Error Characteristics</h2>
+                    <p class="text-stone-600">${method.error}</p>
+                </div>
+
+                <div class="content-card">
+                    <h2 class="text-xl font-semibold text-stone-700 mb-4">When The Method Fails</h2>
+                    <p class="text-stone-600">${method.failsWhen}</p>
+                </div>
+
+                <div class="content-card">
+                    <h2 class="text-xl font-semibold text-stone-700 mb-4">Sample Problems</h2>
+                    <div class="flex flex-col gap-4">
+                        ${sampleProblemsHTML}
+                    </div>
+                </div>
+            `;
+            contentContainer.appendChild(contentEl);
+
+            // Render math formulas in the newly created content
+            renderMathInElement(contentEl, {
+              delimiters: [
+                  {left: '$$', right: '$$', display: true},
+                  {left: '$', right: '$', display: false}
+              ]
+            });
+
+            if (method.interactive) {
+                renderNewtonChart();
+            }
+        }
+        
+        function renderNewtonChart() {
+            const ctx = document.getElementById('newtonChart').getContext('2d');
+
+            const f = x => x*x*x - 2*x - 5;
+            
+            const dataPoints = [];
+            for(let i = 0; i <= 3.5; i += 0.1) {
+                dataPoints.push({x: i, y: f(i)});
+            }
+
+            const iterations = [
+                {x: 2.0, y: f(2.0)},
+                {x: 2.1, y: f(2.1)},
+                {x: 2.094568, y: f(2.094568)},
+                {x: 2.094551, y: f(2.094551)}
+            ];
+
+            activeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'f(x) = x³ - 2x - 5',
+                            data: dataPoints,
+                            borderColor: '#0284c7', // Sky-600
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Iterations',
+                            data: iterations,
+                            borderColor: '#dc2626', // Red-600
+                            backgroundColor: '#dc2626',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            showLine: false,
+                            type: 'scatter'
+                        },
+                         {
+                            label: 'Root',
+                            data: [{x: 2.094551, y: 0}],
+                            borderColor: '#16a34a', // Green-600
+                            backgroundColor: '#16a34a',
+                            pointRadius: 7,
+                            pointStyle: 'star',
+                            pointHoverRadius: 9,
+                            showLine: false,
+                            type: 'scatter'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            type: 'linear', 
+                            position: 'bottom',
+                            title: { display: true, text: 'x' }
+                        },
+                        y: {
+                            title: { display: true, text: 'f(x)' },
+                            grid: {
+                                color: '#e7e5e4' // Stone-200
+                            },
+                             axis: {
+                                zeroLineColor: '#a8a29e' // Stone-400
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += `(${context.parsed.x.toFixed(4)}, ${context.parsed.y.toFixed(4)})`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function init() {
+            methodsData.forEach(method => {
+                const button = document.createElement('button');
+                button.textContent = method.name;
+                button.className = 'nav-button w-full text-left p-3 rounded-lg text-stone-700';
+                button.dataset.id = method.id;
+                button.addEventListener('click', () => displayMethod(method.id));
+                navContainer.appendChild(button);
+            });
+
+            if (methodsData.length > 0) {
+                displayMethod(methodsData[0].id);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
